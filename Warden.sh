@@ -146,7 +146,7 @@ function add_validator() {
     read -p "请输入您的验证者详情（例如'吊毛资本'）: " details
     sudo tee ~/validator.json > /dev/null <<EOF
 {
-  "pubkey": $$pubkey,
+  "pubkey": ${PUBKEY},
   "amount": "100000ubbn",
   "moniker": "$validator_name",
   "details": "$details",

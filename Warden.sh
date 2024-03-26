@@ -40,7 +40,6 @@ function install_node() {
 
 # 创建节点名称
 read -p "请输入你想设置节点名称: " MONIKER
-read -r -p "请输入基础端口号（例如：26000，将用于生成其他端口）： " BASE_PORT
 
 sudo apt update && sudo apt upgrade -y
 
@@ -51,8 +50,8 @@ sudo apt -qy install curl git jq lz4 build-essential
 rm -rf $HOME/go
 sudo rm -rf /usr/local/go
 cd $HOME
-curl https://dl.google.com/go/go1.22.0.linux-amd64.tar.gz | sudo tar -C/usr/local -zxvf -
-cat <<'EOF' >>$HOME/.profile
+curl https://dl.google.com/go/go1.22.0.linux-amd64.tar.gz | sudo tar -C /usr/local -zxvf -
+cat <<EOF >>$HOME/.profile
 export GOROOT=/usr/local/go
 export GOPATH=$HOME/go
 export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin
@@ -80,25 +79,6 @@ wardend init $MONIKER
 wget -O $HOME/.warden/config/genesis.json https://testnet-files.itrocket.net/warden/genesis.json
 wget -O $HOME/.warden/config/addrbook.json https://testnet-files.itrocket.net/warden/addrbook.json
 
-# 计算其他端口
-let "WARDEN_PORT = BASE_PORT + 0"
-let "API_PORT = BASE_PORT + 317"
-let "RPC_PORT = BASE_PORT + 657"
-let "P2P_PORT = BASE_PORT + 656"
-let "PROMETHEUS_PORT = BASE_PORT + 660"
-let "GRPC_PORT = BASE_PORT + 9090"
-let "GRPC_WEB_PORT = BASE_PORT + 9091"
-let "PROXY_APP_PORT = BASE_PORT + 660"
-let "PROF_LISTEN_ADDR = BASE_PORT + 6060"
-
-# 设置端口到app.toml
-sed -i.bak -e "s%:1317%:$API_PORT%g;
-s%:8080%:$API_PORT%g;
-s%:9090%:$GRPC_PORT%g;
-s%:9091%:$GRPC_WEB_PORT%g;
-s%:8545%:${BASE_PORT}545%g;
-s%:8546%:${BASE_PORT}546%g;
-s%:6065%:${BASE_PORT}065%g" $HOME/.warden/config/app.toml
 
 # 设置端口到config.toml file
 sed -i.bak -e "s%:26658%:$PROXY_APP_PORT%g;
@@ -160,27 +140,27 @@ function add_wallet() {
 
 # 创建验证者
 function add_validator() {
+    pubkey=$(wardend comet show-validator)
     read -p "请输入您的钱包名称: " wallet_name
-    read -p "请输入您想设置的验证者的名字: " test
-    read -p "请输入您的验证者身份（identity，如果没有请留空）: " identity
-    read -p "请输入您的验证者详情（例如'I love blockchain ❤️'）: " details
+    read -p "请输入您想设置的验证者的名字: " validator_name
+    read -p "请输入您的验证者详情（例如'吊毛资本'）: " details
+    sudo tee ~/validator.json > /dev/null <<EOF
+{
+  "pubkey": $$pubkey,
+  "amount": "100000ubbn",
+  "moniker": "$validator_name",
+  "details": "$details",
+  "commission-rate": "0.1",
+  "commission-max-rate": "0.2",
+  "commission-max-change-rate": "0.01",
+  "min-self-delegation": "1"
+}
 
-wardend tx staking create-validator \
---amount 1000000uward \
---from $wallet_name \
---commission-rate 0.1 \
---commission-max-rate 0.2 \
---commission-max-change-rate 0.01 \
---min-self-delegation 1 \
---pubkey $(wardend tendermint show-validator) \
---moniker "$test" \
---identity "$identity" \
---details "$details" \
---chain-id alfama \
---gas auto --gas-adjustment 1.5 \
--y
-
-    echo "验证者创建命令已执行。"
+EOF
+wardend tx staking create-validator validator.json --from $wallet_name  \
+--chain-id=alfama \
+--fees=500uward
+--from=$wallet_name
 }
 
 # 导入钱包
@@ -211,7 +191,7 @@ function view_logs() {
 }
 
 # 节点日志查询
-function Reward_test() {
+function reward_test() {
 read -p "请输入您的地址: " user_address
 curl -X POST -H "Content-Type: application/json" --data "{\"address\": \"${user_address}\"}" https://faucet.alfama.wardenprotocol.org
 
@@ -269,7 +249,7 @@ function main_menu() {
     8) view_logs ;;
     9) uninstall_script ;;
     10) check_and_set_alias ;;  
-    11) Reward_test ;;  
+    11) reward_test ;;  
     *) echo "无效选项。" ;;
     esac
     echo "按任意键返回主菜单..."

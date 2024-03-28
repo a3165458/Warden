@@ -75,14 +75,6 @@ wget -O $HOME/.warden/config/genesis.json https://testnet-files.itrocket.net/war
 wget -O $HOME/.warden/config/addrbook.json https://testnet-files.itrocket.net/warden/addrbook.json
 
 
-# 设置端口到config.toml file
-sed -i.bak -e "s%:26658%:$PROXY_APP_PORT%g;
-s%:26657%:$RPC_PORT%g;
-s%:6060%:$PROF_LISTEN_ADDR%g;
-s%:26656%:$P2P_PORT%g;
-s%^external_address = \"\"%external_address = \"$(wget -qO- eth0.me):$P2P_PORT\"%;
-s%:26660%:$PROMETHEUS_PORT%g" $HOME/.warden/config/config.toml
-
 # 设置种子节点
 SEEDS="ff0885377c44d58164f29d356b9d3d3a755c6213@warden-testnet-seed.itrocket.net:18656"
 PEERS="f995c84635c099329bfaaa255389d63e052cb0ac@warden-testnet-peer.itrocket.net:18656,0be8cf6de2a01a6dc7adb29a801722fe4d061455@65.109.115.100:27060,f362d57aa6f78e035c8924e7144b7225392b921d@213.239.217.52:38656,9dfe1d1cc0a998351752a63ef8f5d88fb3464fc4@62.171.166.40:26656,89690e4abb78840ad172c8628a50570c9f484797@65.21.233.34:11656,2581489669e7a297fcd9e9d2c050a177b8d82010@85.10.201.125:56656,2d73e907c241774edf2068eebe583742c461aa58@80.65.211.143:11156,00c0b45d650def885fcbcc0f86ca515eceede537@152.53.18.245:15656,c7e29dad47a59d80d40d3daec3936cb9b8238744@185.225.191.31:26656,afede188ca76320b6fe7560560ede13ef63d8b8d@89.117.51.142:26686,ce520fdd9ad9d1d24fb5b3adcc065591f22fc770@65.108.206.118:46656"
@@ -185,7 +177,7 @@ function view_logs() {
     sudo journalctl -f -u wardend.service 
 }
 
-# 节点日志查询
+# 领水
 function reward_test() {
 read -p "请输入您的地址: " user_address
 curl -X POST -H "Content-Type: application/json" --data "{\"address\": \"${user_address}\"}" https://faucet.alfama.wardenprotocol.org

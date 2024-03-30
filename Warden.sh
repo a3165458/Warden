@@ -58,7 +58,7 @@ go version
 # 克隆项目仓库
 cd $HOME
 rm -rf wardenprotocol
-git clone --depth 1 --branch v0.1.0 https://github.com/warden-protocol/wardenprotocol/
+git clone --depth 1 --branch v0.2.0 https://github.com/warden-protocol/wardenprotocol/
 cd  wardenprotocol/warden/cmd/wardend
 go build
 chmod +x wardend

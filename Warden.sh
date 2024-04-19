@@ -125,7 +125,7 @@ source $HOME/.bash_profile
 # 下载快照
 curl -L https://t-ss.nodeist.net/warden/snapshot_latest.tar.lz4 | lz4 -dc - | tar -xf - -C $HOME/.warden --strip-components 2
 
-pm2 start wardend -- start && pm2 save && pm2 startup
+pm2 start build/wardend -- start && pm2 save && pm2 startup
 
     echo '====================== 安装完成 ==========================='
     
@@ -155,11 +155,11 @@ function add_validator() {
 }
 
 EOF
-wardend tx staking create-validator validator.json --from $wallet_name  \
+wardend tx staking create-validator validator.json --from $wallet_name --node $Warden_RPC_PORT \
 --chain-id=buenavista-1 \
 --fees=500uward
 --from=$wallet_name
---node $Artela_RPC_PORT
+
 }
 
 # 导入钱包
@@ -211,7 +211,7 @@ function uninstall_node() {
     case "$response" in
         [yY][eE][sS]|[yY]) 
             echo "开始卸载节点程序..."
-            pm2 delete wardend && rm -rf $HOME/.wardend && rm -rf warden && sudo rm -rf $(which wardend)
+            pm2 delete wardend && rm -rf $HOME/.wardend && rm -rf $HOME/.warden && sudo rm -rf $(which wardend) && rm -rf wardenprotocol
 
             echo "节点程序卸载完成。"
             ;;

@@ -66,10 +66,6 @@ node_address="tcp://localhost:12457"
 install_nodejs_and_npm
 install_pm2
 
-
-# 创建节点名称
-read -p "请输入你想设置节点名称: " MONIKER
-
 sudo apt update && sudo apt upgrade -y
 
 # 安装构建工具
@@ -87,16 +83,21 @@ go version
 # 克隆项目仓库
 cd $HOME
 rm -rf wardenprotocol
-git clone --depth 1 --branch v0.3.0 https://github.com/warden-protocol/wardenprotocol/
+git clone --depth 1 --branch v0.3.0 https://github.com/warden-protocol/wardenprotocol
 cd wardenprotocol
-make install
+wget https://github.com/warden-protocol/wardenprotocol/releases/download/v0.3.0/wardend_Linux_x86_64.zip
+unzip wardend_Linux_x86_64.zip
+rm -rf wardend_Linux_x86_64.zip
+chmod +x wardend
+mv wardend /usr/local/go/bin
+
+
 
 # 配置节点
-wardend init mynode
+wardend init mynode --chain-id buenavista-1
 
 # 下载文件和地址簿
-curl -s https://t-ss.nodeist.net/warden/genesis.json > $HOME/.warden/config/genesis.json
-curl -s https://t-ss.nodeist.net/warden/addrbook.json > $HOME/.warden/config/addrbook.json
+wget -O $HOME/.warden/config/genesis.json "https://raw.githubusercontent.com/warden-protocol/networks/main/testnets/buenavista/genesis.json"
 
 
 # 设置种子节点
@@ -121,6 +122,7 @@ sed -i -e "s%^address = \"tcp://localhost:1317\"%address = \"tcp://0.0.0.0:12417
 echo "export Warden_RPC_PORT=$node_address" >> $HOME/.bash_profile
 source $HOME/.bash_profile   
 
+go install cosmossdk.io/tools/cosmovisor/cmd/cosmovisor@v1.5.0
 
 # 下载快照
 curl -L https://t-ss.nodeist.net/warden/snapshot_latest.tar.lz4 | lz4 -dc - | tar -xf - -C $HOME/.warden --strip-components 2

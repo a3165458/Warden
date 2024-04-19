@@ -91,11 +91,8 @@ git clone --depth 1 --branch v0.3.0 https://github.com/warden-protocol/wardenpro
 cd wardenprotocol
 make install
 
-
 # 配置节点
-wardend config chain-id buenavista-1
-wardend config keyring-backend os
-wardend config node tcp://localhost:12457
+wardend init mynode
 
 # 下载文件和地址簿
 curl -s https://t-ss.nodeist.net/warden/genesis.json > $HOME/.warden/config/genesis.json
@@ -214,7 +211,7 @@ function uninstall_node() {
     case "$response" in
         [yY][eE][sS]|[yY]) 
             echo "开始卸载节点程序..."
-            sudo systemctl stop wardend && sudo systemctl disable wardend && sudo rm /etc/systemd/system/wardend.service && sudo systemctl daemon-reload && rm -rf $HOME/.wardend && rm -rf warden && sudo rm -rf $(which wardend)
+            pm2 delete wardend && rm -rf $HOME/.wardend && rm -rf warden && sudo rm -rf $(which wardend)
 
             echo "节点程序卸载完成。"
             ;;

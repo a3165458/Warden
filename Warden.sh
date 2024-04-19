@@ -7,8 +7,33 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-# 脚本保存路径
-SCRIPT_PATH="$HOME/Warden.sh"
+# 检查并安装 Node.js 和 npm
+function install_nodejs_and_npm() {
+    if command -v node > /dev/null 2>&1; then
+        echo "Node.js 已安装"
+    else
+        echo "Node.js 未安装，正在安装..."
+        curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+        sudo apt-get install -y nodejs
+    fi
+
+    if command -v npm > /dev/null 2>&1; then
+        echo "npm 已安装"
+    else
+        echo "npm 未安装，正在安装..."
+        sudo apt-get install -y npm
+    fi
+}
+
+# 检查并安装 PM2
+function install_pm2() {
+    if command -v pm2 > /dev/null 2>&1; then
+        echo "PM2 已安装"
+    else
+        echo "PM2 未安装，正在安装..."
+        npm install pm2@latest -g
+    fi
+}
 
 # 自动设置快捷键的功能
 function check_and_set_alias() {
@@ -37,6 +62,10 @@ function check_and_set_alias() {
 
 # 节点安装功能
 function install_node() {
+node_address="tcp://localhost:12457"
+install_nodejs_and_npm
+install_pm2
+
 
 # 创建节点名称
 read -p "请输入你想设置节点名称: " MONIKER
@@ -58,62 +87,48 @@ go version
 # 克隆项目仓库
 cd $HOME
 rm -rf wardenprotocol
-git clone --depth 1 --branch v0.2.0 https://github.com/warden-protocol/wardenprotocol/
-cd  wardenprotocol/warden/cmd/wardend
-go build
-chmod +x wardend
-sudo mv wardend /usr/local/bin/
+git clone --depth 1 --branch v0.3.0 https://github.com/warden-protocol/wardenprotocol/
+cd wardenprotocol
+make install
 
 
 # 配置节点
+wardend config chain-id buenavista-1
 wardend config keyring-backend os
-wardend config chain-id alfama
-wardend init $MONIKER
+wardend config node tcp://localhost:12457
 
 # 下载文件和地址簿
-wget -O $HOME/.warden/config/genesis.json https://testnet-files.itrocket.net/warden/genesis.json
-wget -O $HOME/.warden/config/addrbook.json https://testnet-files.itrocket.net/warden/addrbook.json
+curl -s https://t-ss.nodeist.net/warden/genesis.json > $HOME/.warden/config/genesis.json
+curl -s https://t-ss.nodeist.net/warden/addrbook.json > $HOME/.warden/config/addrbook.json
 
 
 # 设置种子节点
-SEEDS="ff0885377c44d58164f29d356b9d3d3a755c6213@warden-testnet-seed.itrocket.net:18656"
-PEERS="f995c84635c099329bfaaa255389d63e052cb0ac@warden-testnet-peer.itrocket.net:18656,0be8cf6de2a01a6dc7adb29a801722fe4d061455@65.109.115.100:27060,f362d57aa6f78e035c8924e7144b7225392b921d@213.239.217.52:38656,9dfe1d1cc0a998351752a63ef8f5d88fb3464fc4@62.171.166.40:26656,89690e4abb78840ad172c8628a50570c9f484797@65.21.233.34:11656,2581489669e7a297fcd9e9d2c050a177b8d82010@85.10.201.125:56656,2d73e907c241774edf2068eebe583742c461aa58@80.65.211.143:11156,00c0b45d650def885fcbcc0f86ca515eceede537@152.53.18.245:15656,c7e29dad47a59d80d40d3daec3936cb9b8238744@185.225.191.31:26656,afede188ca76320b6fe7560560ede13ef63d8b8d@89.117.51.142:26686,ce520fdd9ad9d1d24fb5b3adcc065591f22fc770@65.108.206.118:46656"
+SEEDS=""
+PEERS="61446070887838944c455cb713a7770b41f35ac5@37.60.249.101:26656,0be8cf6de2a01a6dc7adb29a801722fe4d061455@65.109.115.100:27060,8288657cb2ba075f600911685670517d18f54f3b@65.108.231.124:18656,dc0122e37c203dec43306430a1f1879650653479@37.27.97.16:26656"
 sed -i -e "s/^seeds *=.*/seeds = \"$SEEDS\"/; s/^persistent_peers *=.*/persistent_peers = \"$PEERS\"/" $HOME/.warden/config/config.toml
 
 # 设置 pruning
-sed -i -e "s/^pruning *=.*/pruning = \"custom\"/" $HOME/.warden/config/app.toml
-sed -i -e "s/^pruning-keep-recent *=.*/pruning-keep-recent = \"100\"/" $HOME/.warden/config/app.toml
-sed -i -e "s/^pruning-interval *=.*/pruning-interval = \"50\"/" $HOME/.warden/config/app.toml
+sed -i 's|^pruning *=.*|pruning = "custom"|g' $HOME/.warden/config/app.toml
+sed -i 's|^pruning-keep-recent  *=.*|pruning-keep-recent = "100"|g' $HOME/.warden/config/app.toml
+sed -i 's|^pruning-interval *=.*|pruning-interval = "10"|g' $HOME/.warden/config/app.toml
+sed -i 's|^snapshot-interval *=.*|snapshot-interval = 0|g' $HOME/.warden/config/app.toml
+
 
 # 设置最小gas
-sed -i 's|minimum-gas-prices =.*|minimum-gas-prices = "0.0025uward"|g' $HOME/.warden/config/app.toml
-sed -i -e "s/prometheus = false/prometheus = true/" $HOME/.warden/config/config.toml
-sed -i -e "s/^indexer *=.*/indexer = \"null\"/" $HOME/.warden/config/config.toml
+sed -i 's|^minimum-gas-prices *=.*|minimum-gas-prices = "0.025uward"|g' $HOME/.warden/config/app.toml
+sed -i 's|^prometheus *=.*|prometheus = true|' $HOME/.warden/config/config.toml
+
+# 配置端口
+sed -i -e "s%^proxy_app = \"tcp://127.0.0.1:26658\"%proxy_app = \"tcp://127.0.0.1:12458\"%; s%^laddr = \"tcp://127.0.0.1:26657\"%laddr = \"tcp://127.0.0.1:12457\"%; s%^pprof_laddr = \"localhost:6060\"%pprof_laddr = \"localhost:12460\"%; s%^laddr = \"tcp://0.0.0.0:26656\"%laddr = \"tcp://0.0.0.0:12456\"%; s%^prometheus_listen_addr = \":26660\"%prometheus_listen_addr = \":12466\"%" $HOME/.warden/config/config.toml
+sed -i -e "s%^address = \"tcp://localhost:1317\"%address = \"tcp://0.0.0.0:12417\"%; s%^address = \":8080\"%address = \":12480\"%; s%^address = \"localhost:9090\"%address = \"0.0.0.0:12490\"%; s%^address = \"localhost:9091\"%address = \"0.0.0.0:12491\"%; s%:8545%:12445%; s%:8546%:12446%; s%:6065%:12465%" $HOME/.warden/config/app.toml
+echo "export Warden_RPC_PORT=$node_address" >> $HOME/.bash_profile
+source $HOME/.bash_profile   
+
 
 # 下载快照
-curl https://testnet-files.itrocket.net/warden/snap_warden.tar.lz4 | lz4 -dc - | tar -xf - -C $HOME/.warden
+curl -L https://t-ss.nodeist.net/warden/snapshot_latest.tar.lz4 | lz4 -dc - | tar -xf - -C $HOME/.warden --strip-components 2
 
-# 设置启动服务
-sudo tee /etc/systemd/system/wardend.service > /dev/null <<EOF
-[Unit]
-Description=Warden daemon
-After=network-online.target
-
-[Service]
-User=$USER
-ExecStart=$(which wardend) start
-Restart=always
-RestartSec=3
-LimitNOFILE=infinity
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-
-sudo systemctl daemon-reload
-sudo systemctl enable wardend
-sudo systemctl start wardend
+pm2 start wardend -- start && pm2 save && pm2 startup
 
     echo '====================== 安装完成 ==========================='
     
@@ -133,7 +148,7 @@ function add_validator() {
     sudo tee ~/validator.json > /dev/null <<EOF
 {
   "pubkey": ${PUBKEY},
-  "amount": "100000ubbn",
+  "amount": "1000000uward",
   "moniker": "$validator_name",
   "details": "$details",
   "commission-rate": "0.1",
@@ -144,9 +159,10 @@ function add_validator() {
 
 EOF
 wardend tx staking create-validator validator.json --from $wallet_name  \
---chain-id=alfama \
+--chain-id=buenavista-1 \
 --fees=500uward
 --from=$wallet_name
+--node $Artela_RPC_PORT
 }
 
 # 导入钱包
@@ -162,12 +178,12 @@ function check_balances() {
 
 # 查看节点同步状态
 function check_sync_status() {
-    wardend status | jq .sync_info
+    wardend status --node $Warden_RPC_PORT | jq .sync_info
 }
 
 # 查看warden服务状态
 function check_service_status() {
-    systemctl status wardend
+    systemctl status wardend --node $Warden_RPC_PORT
 }
 
 # 节点日志查询
@@ -179,6 +195,14 @@ function view_logs() {
 function reward_test() {
 read -p "请输入您的地址: " user_address
 curl -X POST -H "Content-Type: application/json" --data "{\"address\": \"${user_address}\"}" https://faucet.alfama.wardenprotocol.org
+
+}
+
+# 给自己地址验证者质押
+function delegate_self_validator() {
+read -p "请输入质押代币数量: " math
+read -p "请输入钱包名称: " wallet_name
+wardend tx staking delegate $(wardend keys show $wallet_name --bech val -a)  ${math}uward --from $wallet_name --chain-id=buenavista-1 --fees 500uward --node $Artela_RPC_PORT -y
 
 }
 
@@ -221,6 +245,7 @@ function main_menu() {
     echo "9. 卸载脚本"
     echo "10. 设置快捷键"  
     echo "11. 领水"  
+    echo "12. 给自己质押"  
     read -p "请输入选项（1-11）: " OPTION
 
     case $OPTION in
@@ -235,6 +260,7 @@ function main_menu() {
     9) uninstall_script ;;
     10) check_and_set_alias ;;  
     11) reward_test ;;  
+    12) delegate_self_validator ;;  
     *) echo "无效选项。" ;;
     esac
     echo "按任意键返回主菜单..."

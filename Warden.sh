@@ -125,7 +125,7 @@ source $HOME/.bash_profile
 # 下载快照
 curl -L https://t-ss.nodeist.net/warden/snapshot_latest.tar.lz4 | lz4 -dc - | tar -xf - -C $HOME/.warden --strip-components 2
 
-pm2 start build/wardend -- start && pm2 save && pm2 startup
+pm2 start wardend -- start && pm2 save && pm2 startup
 
     echo '====================== 安装完成 ==========================='
     
